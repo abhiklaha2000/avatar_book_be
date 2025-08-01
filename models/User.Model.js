@@ -23,7 +23,24 @@ const UserSchema = new mongoose.Schema({
         type: String,
         enum: ['active', 'deleted'],
         default: 'active' // optional, if you want a default value
-    }
+    },
+    plan: {
+        type: String,
+        enum: ['one_month', 'one_year', 'none'],
+        default: 'none',
+    },
+    plan_start_date: {
+        type: Date, // Use Date type instead of enum for actual dates
+        default: null,
+    },
+    plan_end_date: {
+        type: Date,
+        default: null,
+    },
+    is_subscription: {
+        type: Boolean,
+        default: false, // Boolean should not be a string
+    },
 }, {
     timestamps: true,
 });

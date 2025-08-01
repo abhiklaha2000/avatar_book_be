@@ -2,6 +2,9 @@ const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const UserModel = require('../models/User.Model');
 require('dotenv').config();
+const Stripe = require("stripe");
+const stripe = Stripe(process.env.STRIPE_SECRET_KEY);
+const moment = require("moment");
 
 class UserController{
 
@@ -83,9 +86,145 @@ static async loginUser(req, res) {
   }
 
 
+ /**
+  * Function to create a payment intent for stripe
+  */ 
+ static async createPaymentIntent(req,res){
+   try {
+    console.log("callll......")
+    const { amount, currency } = req.body;
+
+    const paymentIntent = await stripe.paymentIntents.create({
+      amount,
+      currency,
+      automatic_payment_methods: {
+        enabled: true, // This enables support for various payment methods (cards, wallets, etc.)
+      },
+    });
+    console.log("PaymentIntent created:", paymentIntent);
+
+    res.send({
+      clientSecret: paymentIntent.client_secret,
+    });
+  } catch (err) {
+    res.status(400).send({ error: err.message });
+  }
+ }
+
+ /**
+  * Function to update the user subscription in the User Model
+  */
+ static async patchUserSubscription(req,res){
+  try{
+     // get the user_id and the plan from the request 
+     // if the plan is one_month the calculate the plan_start_date and plan_end_date
+     // and update the data in the User Model
+      const { user_id} = req.params;
+      const { plan } = req.body;
+
+      if (!user_id || !plan) {
+        return res.status(400).json({ error: "user_id and plan are required", success: false });
+      }
+
+      if (!['one_month', 'one_year', 'none'].includes(plan)) {
+        return res.status(400).json({ error: "Invalid plan", success: false });
+      }
+
+      let plan_start_date = null;
+      let plan_end_date = null;
+      let is_subscription = false;
+
+      if (plan === 'one_month') {
+        plan_start_date = moment().toDate();
+        plan_end_date = moment().add(1, 'month').toDate();
+        is_subscription = true;
+      } else if (plan === 'one_year') {
+        plan_start_date = moment().toDate();
+        plan_end_date = moment().add(1, 'year').toDate();
+        is_subscription = true;
+      } else if (plan === 'none') {
+        is_subscription = false;
+      }
+
+      const updatedUser = await UserModel.findByIdAndUpdate(
+        {_id: user_id},
+        {
+          plan,
+          plan_start_date,
+          plan_end_date,
+          is_subscription
+        },
+        { new: true }
+      );
+
+      if (!updatedUser) {
+        return res.status(404).json({ error: "User not found", success: false });
+      }
+
+      res.status(200).json({
+        message: "User subscription updated successfully",
+        success: true,
+        data: updatedUser
+      });
 
 
+  }catch(err){
+    console.error("Error in patchUserSubscription:", err);
+    res.status(500).json({ error: "Internal Server Error", success: false });
+ }
 
+ }
+
+ /**
+  * Function to get the user subscription details
+  */
+  static async getUserSubscription(req, res) {
+    try {
+      const { user_id } = req.params;
+
+      if (!user_id) {
+        return res.status(400).json({ error: "user_id is required", success: false });
+      }
+
+      const user = await UserModel.findById({_id: user_id});
+
+      if (!user) {
+        return res.status(404).json({ error: "User not found", success: false });
+      }
+
+      // If there's no active subscription, return user info
+      if (!user.plan_end_date || !user.is_subscription) {
+        return res.status(200).json({
+          message: "User has no subscription yet",
+          success: true,
+          data: user
+        });
+      }
+
+      const currentDate = new Date();
+
+      // Check if subscription has expired
+      if (new Date(user.plan_end_date) < currentDate) {
+        // Update the subscription status
+        user.plan = 'none';
+        user.plan_start_date = null;
+        user.plan_end_date = null;
+        user.is_subscription = false;
+
+        await user.save();
+      }
+
+      return res.status(200).json({
+        message: "User subscription info fetched",
+        success: true,
+        data: user
+      });
+
+    } catch (err) {
+      console.error("Error in getUserSubscription:", err);
+      res.status(500).json({ error: "Internal Server Error", success: false });
+    }
+  }
 }
 
 
