@@ -66,10 +66,13 @@ static async loginUser(req, res) {
       if (!isMatch) {
         return res.status(401).json({ error: "Invalid credentials", success: false });
       }
+      console.log("user---", user)
+
+      console.log("process.env.JWT_SECRET---", process.env.JWT_SECRET)
 
       // 3. Generate JWT token
       const token = jwt.sign(
-        { id: user.id, email: user.email },
+        { email: user.email },
         process.env.JWT_SECRET,
         { expiresIn: "7d" } // Token valid for 7 days
       );
@@ -91,8 +94,7 @@ static async loginUser(req, res) {
   */ 
  static async createPaymentIntent(req,res){
    try {
-    console.log("callll......")
-    const { amount, currency } = req.body;
+    const { amount, currency , plan} = req.body;
 
     const paymentIntent = await stripe.paymentIntents.create({
       amount,
@@ -102,6 +104,8 @@ static async loginUser(req, res) {
       },
     });
     console.log("PaymentIntent created:", paymentIntent);
+
+    // update the database user with the start d
 
     res.send({
       clientSecret: paymentIntent.client_secret,
@@ -126,7 +130,7 @@ static async loginUser(req, res) {
         return res.status(400).json({ error: "user_id and plan are required", success: false });
       }
 
-      if (!['one_month', 'one_year', 'none'].includes(plan)) {
+      if (!['monthly', 'yearly', 'none'].includes(plan)) {
         return res.status(400).json({ error: "Invalid plan", success: false });
       }
 
@@ -134,11 +138,11 @@ static async loginUser(req, res) {
       let plan_end_date = null;
       let is_subscription = false;
 
-      if (plan === 'one_month') {
+      if (plan === 'monthly') {
         plan_start_date = moment().toDate();
         plan_end_date = moment().add(1, 'month').toDate();
         is_subscription = true;
-      } else if (plan === 'one_year') {
+      } else if (plan === 'yearly') {
         plan_start_date = moment().toDate();
         plan_end_date = moment().add(1, 'year').toDate();
         is_subscription = true;

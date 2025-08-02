@@ -1,6 +1,7 @@
 const express = require('express');
 const cors = require("cors");
 const user_router = require('./routes/User.Route');
+const transaction_router = require('./routes/Transaction.Route');
 require('./db/conn');
 
 
@@ -17,6 +18,7 @@ app.get("/api/v1/test", (req, res) => {
 });
 
 app.use('/api/v1', user_router);
+app.use('/api/v1', transaction_router);
 
 
 app.listen(port,() =>{
