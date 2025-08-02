@@ -5,6 +5,7 @@ require('dotenv').config();
 const Stripe = require("stripe");
 const stripe = Stripe(process.env.STRIPE_SECRET_KEY);
 const moment = require("moment");
+const { isNotEmpty, verifyLoginToken } = require('../helpers/utils');
 
 class UserController{
 
@@ -94,7 +95,7 @@ static async loginUser(req, res) {
   */ 
  static async createPaymentIntent(req,res){
    try {
-    const { amount, currency } = req.body;
+    const { amount, currency , plan , token} = req.body;
 
     const paymentIntent = await stripe.paymentIntents.create({
       amount, 
@@ -104,7 +105,16 @@ static async loginUser(req, res) {
       },
     });
     console.log("PaymentIntent created:", paymentIntent);
-    
+
+    // verify the token and get the email from it 
+    const token_data = verifyLoginToken({token})
+
+    await UserModel.findOneAndUpdate(
+      { email: token_data?.email },
+      { plan },
+      { new: true }
+    );
+
     res.send({
       clientSecret: paymentIntent.client_secret,
     });
@@ -121,37 +131,35 @@ static async loginUser(req, res) {
      // get the user_id and the plan from the request 
      // if the plan is one_month the calculate the plan_start_date and plan_end_date
      // and update the data in the User Model
-      const { user_id} = req.params;
-      const { plan } = req.body;
-
-      if (!user_id || !plan) {
-        return res.status(400).json({ error: "user_id and plan are required", success: false });
-      }
-
-      if (!['monthly', 'yearly', 'none'].includes(plan)) {
-        return res.status(400).json({ error: "Invalid plan", success: false });
-      }
+      const { token } = req.body;
+      
+      // verify the token 
+      const token_data = verifyLoginToken({token})
+      const user = await UserModel.findOne({email: token_data?.email})
 
       let plan_start_date = null;
       let plan_end_date = null;
       let is_subscription = false;
 
-      if (plan === 'monthly') {
-        plan_start_date = moment().toDate();
-        plan_end_date = moment().add(1, 'month').toDate();
-        is_subscription = true;
-      } else if (plan === 'yearly') {
-        plan_start_date = moment().toDate();
-        plan_end_date = moment().add(1, 'year').toDate();
-        is_subscription = true;
-      } else if (plan === 'none') {
-        is_subscription = false;
+      if(isNotEmpty(user)){
+        if (user?.plan === 'monthly') {
+          plan_start_date = moment().toDate();
+          plan_end_date = moment().add(1, 'month').toDate();
+          is_subscription = true;
+        } else if (user?.plan === 'yearly') {
+          plan_start_date = moment().toDate();
+          plan_end_date = moment().add(1, 'year').toDate();
+          is_subscription = true;
+        } else if (user?.plan === 'none') {
+          is_subscription = false;
+        }
+      }else {
+         return res.status(404).json({ error: "User not found", success: false });
       }
-
+     
       const updatedUser = await UserModel.findByIdAndUpdate(
-        {_id: user_id},
+        {_id: user?._id},
         {
-          plan,
           plan_start_date,
           plan_end_date,
           is_subscription
@@ -182,13 +190,12 @@ static async loginUser(req, res) {
   */
   static async getUserSubscription(req, res) {
     try {
-      const { user_id } = req.params;
+      const { token } = req.params;
 
-      if (!user_id) {
-        return res.status(400).json({ error: "user_id is required", success: false });
-      }
+      // verify the token 
+      const token_data = verifyLoginToken({token})
 
-      const user = await UserModel.findById({_id: user_id});
+      const user = await UserModel.findOne({email: token_data?.email});
 
       if (!user) {
         return res.status(404).json({ error: "User not found", success: false });
@@ -224,6 +231,20 @@ static async loginUser(req, res) {
 
     } catch (err) {
       console.error("Error in getUserSubscription:", err);
+      res.status(500).json({ error: "Internal Server Error", success: false });
+    }
+  }
+
+  /**
+   * Function to patch the user transaction
+   */
+  static async patchUserTransaction(req, res){
+    try{
+       const { id } = req.params;
+       const user = await UserModel.findById(id);
+      
+    }catch(err){
+      console.error("Error in patchUserTransaction:", err);
       res.status(500).json({ error: "Internal Server Error", success: false });
     }
   }
