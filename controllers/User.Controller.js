@@ -82,6 +82,7 @@ static async loginUser(req, res) {
         message: "Login successful",
         success: true,
         token,
+        user
       });
     } catch (err) {
       console.error("Error in loginUser:", err);
