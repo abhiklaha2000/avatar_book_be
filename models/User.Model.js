@@ -41,6 +41,11 @@ const UserSchema = new mongoose.Schema({
         type: Boolean,
         default: false, // Boolean should not be a string
     },
+    invoice_id:{
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Payment',
+        required: false // Optional, if you want to link to a payment
+    }
 }, {
     timestamps: true,
 });

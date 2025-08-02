@@ -94,19 +94,17 @@ static async loginUser(req, res) {
   */ 
  static async createPaymentIntent(req,res){
    try {
-    const { amount, currency , plan} = req.body;
+    const { amount, currency } = req.body;
 
     const paymentIntent = await stripe.paymentIntents.create({
-      amount,
-      currency,
+      amount, 
+      currency, 
       automatic_payment_methods: {
         enabled: true, // This enables support for various payment methods (cards, wallets, etc.)
       },
     });
     console.log("PaymentIntent created:", paymentIntent);
-
-    // update the database user with the start d
-
+    
     res.send({
       clientSecret: paymentIntent.client_secret,
     });

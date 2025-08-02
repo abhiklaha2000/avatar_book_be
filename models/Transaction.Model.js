@@ -2,17 +2,6 @@
 const mongoose = require('mongoose');
 
 const paymentSchema = new mongoose.Schema({
-  unique_id:{
-    type: String,
-    required: true,
-    unique: true,
-  },
-  email: {
-    type: String,
-    required: true,
-    trim: true,
-    lowercase: true
-  },
   amount: {
     type: Number,
     required: true

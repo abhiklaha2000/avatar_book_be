@@ -19,21 +19,15 @@ class TrasactionController{
  */    
 static async createUserTransacton(req, res) {
   try {
-    const transaction_id = uuidv4(); // Generate unique transaction ID
-    const {token, amount, plan } = req.body;
+    const { amount, plan } = req.body;
 
-    if (!token || !amount || !plan) {
+    if (!amount || !plan) {
       return res.status(400).json({ error: "Missing required fields", success: false });
     }
 
-    // need to varify the token and extract the email
-    const token_data = verifyLoginToken({token})
-
     const newPayment = new PaymentModel({
-      email: token_data.email,
       amount,
       plan,
-      unique_id: transaction_id
     });
 
     await newPayment.save();
@@ -61,7 +55,7 @@ static async getUserTransaction(req,res){
         return res.status(400).json({ error: "Unique ID is required", success: false });
       }
       // get the transaction details
-      const transaction = await PaymentModel.findOne({unique_id});
+      const transaction = await PaymentModel.findOne({_id: unique_id });
       if(!transaction){
         return res.status(404).json({ error: "Transaction not found", success: false });
       }
