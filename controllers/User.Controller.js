@@ -16,7 +16,6 @@ class UserController{
  */    
 static async registerUser(req,res){
    try{
-    console.log("register calll")
         const { name, email, password } = req.body;
 
         // Validate input
@@ -67,10 +66,6 @@ static async loginUser(req, res) {
       if (!isMatch) {
         return res.status(401).json({ error: "Invalid credentials", success: false });
       }
-      console.log("user---", user)
-
-      console.log("process.env.JWT_SECRET---", process.env.JWT_SECRET)
-
       // 3. Generate JWT token
       const token = jwt.sign(
         { email: user.email },
@@ -78,11 +73,15 @@ static async loginUser(req, res) {
         { expiresIn: "7d" } // Token valid for 7 days
       );
 
+      // make a plain user object
+      const  _user = user.toJSON();
+      delete _user?.password;
+
       return res.status(200).json({
         message: "Login successful",
         success: true,
         token,
-        user
+        user: _user
       });
     } catch (err) {
       console.error("Error in loginUser:", err);
@@ -166,7 +165,7 @@ static async loginUser(req, res) {
           is_subscription
         },
         { new: true }
-      );
+      ).select("-password");
 
       if (!updatedUser) {
         return res.status(404).json({ error: "User not found", success: false });
@@ -196,7 +195,7 @@ static async loginUser(req, res) {
       // verify the token 
       const token_data = verifyLoginToken({token})
 
-      const user = await UserModel.findOne({email: token_data?.email});
+      const user = await UserModel.findOne({email: token_data?.email}).select('-password');
 
       if (!user) {
         return res.status(404).json({ error: "User not found", success: false });
