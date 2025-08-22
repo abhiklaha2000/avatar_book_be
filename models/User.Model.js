@@ -6,6 +6,11 @@ const UserSchema = new mongoose.Schema({
         required: true,
         trim: true
     },
+    user_name: {
+        type: String,
+        required: true,
+        trim: true
+    },
     email: {
         type: String,
         default: "",
@@ -18,6 +23,11 @@ const UserSchema = new mongoose.Schema({
         type: String,
         default: "",
         required: true,
+    },
+    register_type: {
+        type: String,
+        enum: ['employee', 'company'],
+        default: 'employee' // optional, if you want a default value
     },
     status: {
         type: String,
@@ -38,6 +48,10 @@ const UserSchema = new mongoose.Schema({
         default: null,
     },
     is_subscription: {
+        type: Boolean,
+        default: false, // Boolean should not be a string
+    },
+    is_email_verified: {
         type: Boolean,
         default: false, // Boolean should not be a string
     },
